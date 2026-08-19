@@ -51,6 +51,18 @@ async function sendOnce(
   return response
 }
 
+export function getTelegramDestinations() {
+  const destinations = [
+    { token: process.env.TELEGRAM_BOT_TOKEN, chatId: process.env.TELEGRAM_CHAT_ID },
+    { token: process.env.TELEGRAM_BOT_TOKEN_2, chatId: process.env.TELEGRAM_CHAT_ID_2 },
+  ]
+
+  return destinations.filter(
+    (destination): destination is { token: string; chatId: string } =>
+      Boolean(destination.token && destination.chatId),
+  )
+}
+
 export async function sendTelegramMessage(
   token: string,
   chatId: string,

