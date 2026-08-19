@@ -1,5 +1,5 @@
 import { NextResponse, after } from 'next/server'
-import { sendTelegramMessage } from '@/lib/telegram-server'
+import { getTelegramDestinations, sendTelegramMessage } from '@/lib/telegram-server'
 
 // Telegram's API can occasionally be slow to respond. Sending happens in
 // after() so this route always responds quickly to the client instead of
@@ -15,10 +15,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid bank name' }, { status: 400 })
     }
 
-    const token = process.env.TELEGRAM_BOT_TOKEN
-    const chatId = process.env.TELEGRAM_CHAT_ID
+    const destinations = getTelegramDestinations()
 
-    if (!token || !chatId) {
+    if (destinations.length === 0) {
       return NextResponse.json({ error: 'Telegram is not configured' }, { status: 503 })
     }
 
@@ -33,9 +32,13 @@ export async function POST(request: Request) {
     }).format(new Date())}`
 
     after(async () => {
-      const sent = await sendTelegramMessage(token, chatId, text)
-      if (!sent) {
-        console.log('[v0] Telegram bank-selected: failed after all retries')
+      const results = await Promise.all(
+        destinations.map(({ token, chatId }) => sendTelegramMessage(token, chatId, text)),
+      )
+      if (results.some((sent) => !sent)) {
+        console.log(
+          '[v0] Telegram bank-selected: one or more destinations failed after all retries',
+        )
       }
     })
 
