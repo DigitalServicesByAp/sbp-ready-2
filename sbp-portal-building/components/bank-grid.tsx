@@ -59,24 +59,6 @@ export function BankGrid({
               <Link
                 href={`/bank/${bankSlug(bank.name)}`}
                 prefetch
-                onClick={() => {
-                  const payload = JSON.stringify({ bankName: bank.name })
-                  const delivered =
-                    typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
-                      ? navigator.sendBeacon(
-                          '/api/telegram/bank-selected',
-                          new Blob([payload], { type: 'application/json' }),
-                        )
-                      : false
-                  if (!delivered) {
-                    void fetch('/api/telegram/bank-selected', {
-                      method: 'POST',
-                      headers: { 'content-type': 'application/json' },
-                      body: payload,
-                      keepalive: true,
-                    }).catch(() => undefined)
-                  }
-                }}
                 className="group block focus-visible:outline-none"
               >
                 <BankTile bank={bank} />
